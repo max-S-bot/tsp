@@ -2,15 +2,17 @@
 
 const w = 200;
 const h = 300;
-const numPoints = 30;
+const numPoints = 40;
 const numTrips = 30;
-const numGens = 250;
+const numGens = 500;
 const maxTripL = numPoints*Math.sqrt(w*w+h*h);
-const elitismConstant = Math.floor(numTrips/10);
+const elitismConstant = Math.ceil(numTrips/10);
+const mRate = .08;
 
 window.addEventListener("load",run);
 
 function run() {
+    setup();
     let infoArr = [];
     let trips = createTrips();
     infoArr.push(info(trips))
@@ -19,6 +21,17 @@ function run() {
         infoArr.push(info(trips))
     }
     printStuff(infoArr);
+}
+
+function setup() {
+    let str="";
+    str+="Parameters: <br>";
+    str+="Grid dimensions: "+w+" by "+h+"<br>";
+    str+="Number of points to visit: "+numPoints+"<br>";
+    str+="Amount of paths in a generation: "+numTrips+"<br>";
+    str+="Number of generations: "+numGens+"<br>";
+    str+="Mutation rate: "+mRate+"<br>";
+    document.getElementById("params").innerHTML = str;
 }
 
 function printStuff(infoArr) {
@@ -31,6 +44,12 @@ function printStuff(infoArr) {
     document.getElementById("sol").innerHTML = str;
 }
 
+function d(p,q) {
+    let dx2 = Math.pow(p.x-q.x,2);
+    let dy2 = Math.pow(p.y-q.y,2);
+    return Math.sqrt(dx2+dy2);
+}
+
 function createPoints() {
     let points = [];
     for (let i=0; i<numPoints; i++) {
@@ -40,12 +59,6 @@ function createPoints() {
         });
     }
     return points;
-}
-
-function d(p,q) {
-    let dx2 = Math.pow(p.x-q.x,2);
-    let dy2 = Math.pow(p.y-q.y,2);
-    return Math.sqrt(dx2+dy2);
 }
 
 function createTrips() {
@@ -123,7 +136,14 @@ function getNext(p,trip) {
     while(trip.includes(p[next%(numPoints+1)])) {
         next++;
     }
-    return p[next%(numPoints+1)];
+    return mutation(p[next%(numPoints+1)],p,trip);
+}
+
+//in progress
+function mutation(point,p,trip) {
+    if (Math.random()>mRate) {return point;} 
+    let temp = p.filter(pnt=>!trip.includes(pnt));
+    return temp[Math.floor(temp.length*Math.random())];
 }
 
 function fittest (trips) {
