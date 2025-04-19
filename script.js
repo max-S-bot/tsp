@@ -2,23 +2,32 @@
 
 const w = 200;
 const h = 300;
-const numPoints = 20;
-const numTrips = 40;
-const numGens = 222;
+const numPoints = 30;
+const numTrips = 30;
+const numGens = 250;
 const maxTripL = numPoints*Math.sqrt(w*w+h*h);
+const elitismConstant = Math.floor(numTrips/10);
 
 window.addEventListener("load",run);
 
 function run() {
+    let infoArr = [];
     let trips = createTrips();
-    let fittestOfGen = [fittestMember(trips)];
+    infoArr.push(info(trips))
     for (let i=0; i<numGens; i++) {
-        trips = crossover(weightedPool(trips));
-        fittestOfGen.push(fittestMember(trips));
+        trips = crossover(trips);
+        infoArr.push(info(trips))
     }
-    let fm = "Fittest member of generation: "
-    fittestOfGen = fittestOfGen.map(trip => tripFitness(trip));
-    let str = fm+fittestOfGen.join("<br>"+fm);
+    printStuff(infoArr);
+}
+
+function printStuff(infoArr) {
+    let str = "";
+    for (let i=0; i<=numGens; i++) {
+        str+="Fittest member of gen "+i+": "+infoArr[i][0]+"<br>";
+        str+="Average Fitness of gen "+i+": "+infoArr[i][1]+"<br>";
+        str+="<br>";
+    }
     document.getElementById("sol").innerHTML = str;
 }
 
@@ -85,9 +94,10 @@ function weightedPool(trips) {
     return pool;
 }
 
-function crossover(pool) {
-    let nextGen = [];
-    for (let i=0; i<numTrips; i++) {
+function crossover(trips) {
+    let pool = weightedPool(trips);
+    let nextGen = elitism(trips);
+    for (let i=0; i<numTrips-elitismConstant; i++) {
         let p1 = pool[Math.floor(pool.length*Math.random())];
         let p2 = pool[Math.floor(pool.length*Math.random())];
         let p = [p1,p2];
@@ -100,6 +110,14 @@ function crossover(pool) {
     return nextGen;
 }
 
+function elitism(trips) {
+    let top10 = [];
+    for (let i=0; i<elitismConstant; i++) {
+        top10.push(fittest(trips));
+    }
+    return top10;
+}
+
 function getNext(p,trip) {
     let next = 1+p.indexOf(trip[trip.length-1]);
     while(trip.includes(p[next%(numPoints+1)])) {
@@ -108,12 +126,18 @@ function getNext(p,trip) {
     return p[next%(numPoints+1)];
 }
 
-function fittestMember(gen) {
-    let fittest=gen[0];
-    for (let i=1; i<numTrips; i++) {
-        if(tripFitness(gen[i])>tripFitness(fittest)) {
-            fittest = gen[i];
+function fittest (trips) {
+    let f = trips[0];
+    for (let i=1; i<trips.length; i++) {
+        if (tripFitness(trips[i])>tripFitness(f)) {
+            f = trips[i];
         }
     }
-    return fittest;
+    return f;
+}
+
+function info (trips) {
+    let final = [tripFitness(fittest(trips))];
+    final.push(trips.reduce((total,trip)=>(total+tripFitness(trip)),0)/numTrips);
+    return final;
 }
