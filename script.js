@@ -2,17 +2,45 @@
 
 const w = 200;
 const h = 300;
-const numPoints = 40;
+const numPoints = 30;
 const numTrips = 30;
-const numGens = 500;
+const numGens = 300;
 const maxTripL = numPoints*Math.sqrt(w*w+h*h);
 const elitismConstant = Math.ceil(numTrips/10);
-const mRate = .08;
+const mRate = .05;
+let crossover;
 
-window.addEventListener("load",run);
+document.getElementById("og").addEventListener("click",ogAlg);
+document.getElementById("pmx").addEventListener("click",pmxAlg);
+document.getElementById("ox").addEventListener("click",oxAlg);
+document.getElementById("cx").addEventListener("click",cxAlg);
+
+//window.addEventListener("load",run);
+
+function ogAlg() {
+    crossover = ogCrossover;
+    run();
+}
+
+function pmxAlg() {
+    crossover = pmxCrossover;
+    run();
+}
+
+function oxAlg() {
+    crossover = oxCrossover;
+    run();
+}
+
+function cxAlg() {
+    crossover = cxCrossover;
+    run();
+}
+
+function setup() {} 
 
 function run() {
-    setup();
+    initialSetup();
     let infoArr = [];
     let trips = createTrips();
     infoArr.push(info(trips))
@@ -21,9 +49,57 @@ function run() {
         infoArr.push(info(trips))
     }
     printStuff(infoArr);
+    createCanvas(w*3, h*3);
+    background(500);
+    canvasSetup();
+    drawPath(fittest(trips));
+    buttons();
 }
 
-function setup() {
+
+
+function drawPath(trip) {
+    for (let i=0; i<numPoints; i++) {
+        let p = trip[i];
+        let pN = trip[i+1]
+        line(3*p.x,3*p.y,3*pN.x,3*pN.y);
+    }
+    stroke("red");
+    strokeWeight(10);
+    point(3*trip[0].x,3*trip[0].y);
+}
+
+function canvasSetup() {
+    for (let i=0; i<=w; i++) {
+        for (let j=0; j<=h; j++) {
+            point(i*3,j*3);
+        }
+    }
+    
+}
+
+function buttons() {
+    document.getElementById("top").innerHTML="Go back up";
+    document.getElementById("top").addEventListener("click",jumpToTop)
+    document.getElementById("bottom").addEventListener("click", jumpToBottom);
+    document.getElementById("bottom").innerHTML="Jump to canvas";
+}
+
+function jumpToBottom() {
+    window.scrollTo(0, document.body.scrollHeight);
+}
+
+function jumpToTop() {
+    window.scrollTo(0, 0);
+}
+
+function info (trips) {
+    let final = [tripFitness(fittest(trips))];
+    final.push(trips.reduce((total,trip)=>(total+tripFitness(trip)),0)/numTrips);
+    return final;
+}
+
+function initialSetup() {
     let str="";
     str+="Parameters: <br>";
     str+="Grid dimensions: "+w+" by "+h+"<br>";
@@ -45,8 +121,8 @@ function printStuff(infoArr) {
 }
 
 function d(p,q) {
-    let dx2 = Math.pow(p.x-q.x,2);
-    let dy2 = Math.pow(p.y-q.y,2);
+    const dx2 = Math.pow(p.x-q.x,2);
+    const dy2 = Math.pow(p.y-q.y,2);
     return Math.sqrt(dx2+dy2);
 }
 
@@ -107,7 +183,7 @@ function weightedPool(trips) {
     return pool;
 }
 
-function crossover(trips) {
+function ogCrossover(trips) {
     let pool = weightedPool(trips);
     let nextGen = elitism(trips);
     for (let i=0; i<numTrips-elitismConstant; i++) {
@@ -118,15 +194,17 @@ function crossover(trips) {
         for (let j=1; j<numPoints; j++) {
             newTrip.push(getNext(p[j%2],newTrip));
         }
-        nextGen.push(newTrip.concat([p[0][0]]));
+        nextGen.push(swapMutation(newTrip.concat([p[0][0]])));
     }
     return nextGen;
 }
 
 function elitism(trips) {
+    let tTrips = [].concat(trips);
     let top10 = [];
     for (let i=0; i<elitismConstant; i++) {
-        top10.push(fittest(trips));
+        top10.push(fittest(tTrips));
+        tTrips.splice(0,1);
     }
     return top10;
 }
@@ -136,14 +214,92 @@ function getNext(p,trip) {
     while(trip.includes(p[next%(numPoints+1)])) {
         next++;
     }
-    return mutation(p[next%(numPoints+1)],p,trip);
+    return p[next%(numPoints+1)];
 }
 
-//in progress
-function mutation(point,p,trip) {
-    if (Math.random()>mRate) {return point;} 
-    let temp = p.filter(pnt=>!trip.includes(pnt));
-    return temp[Math.floor(temp.length*Math.random())];
+function swapMutation(trip) {
+    if (Math.random()>mRate) {return trip;}
+    let index1 = Math.floor((numTrips-2)*Math.random())+1;
+    let index2 = Math.floor((numTrips-2)*Math.random())+1;
+    return swap(index1,index2,trip);
+}
+
+function swap(index1,index2,trip) {
+    let swappedTrip=[].concat(trip);
+    swappedTrip[index1]=trip[index2];
+    swappedTrip[index2]=trip[index1];
+    return swappedTrip;
+}
+
+function pmxCrossover(trips) {
+    let pool = weightedPool(trips);
+    let nextGen = elitism(trips);
+    const pmxConst = Math.floor(.1*numPoints);
+    for (let i=0; i<numTrips-elitismConstant; i++) {
+        let p1 = pool[Math.floor(pool.length*Math.random())];
+        let p2 = pool[Math.floor(pool.length*Math.random())];
+        let newTrip = [];
+        let start = Math.floor(Math.random()*numPoints);
+        for (let j=start; j<start+pmxConst; j++) {
+            newTrip.push(p1[j%numPoints]);
+        }
+        for (let j=start+pmxConst; j<start+numPoints; j++) {
+            newTrip[j%numPoints] = pmxNext(p2,newTrip);
+        }
+        newTrip=
+        //needs work
+        newTrip[numPoints-1] = p1[0];
+        newTrip[0] = p1[0];
+        newTrip
+        nextGen.push(swapMutation(newTrip));
+    }
+
+    return nextGen;
+}
+
+function pmxNext(p2,newTrip) {
+    let n = 1;
+    while (contains(newTrip,p2[n])) {
+        n++;
+    }
+    return p2[n];
+}
+
+function contains(newTrip,point) {
+    for (let i=1; i<numPoints-1; i++) {
+        if (newTrip[i]==point) {return true;}
+    }
+    return false;
+}
+
+function oxCrossover(trips) {
+    let pool = weightedPool(trips);
+    let nextGen = elitism(trips);
+    for (let i=0; i<numTrips-elitismConstant; i++) {
+        let p1 = pool[Math.floor(pool.length*Math.random())];
+        let p2 = pool[Math.floor(pool.length*Math.random())];
+        let newTrip = [];
+        //incomplete implementation
+
+        nextGen.push(swapMutation(newTrip.concat([p[0][0]])));
+    }
+
+    return nextGen;
+}
+
+function cxCrossover(trips) {
+    let pool = weightedPool(trips);
+    let nextGen = elitism(trips);
+    for (let i=0; i<numTrips-elitismConstant; i++) {
+        let p1 = pool[Math.floor(pool.length*Math.random())];
+        let p2 = pool[Math.floor(pool.length*Math.random())];
+        let newTrip = [];
+        //incomplete implementation
+
+        nextGen.push(swapMutation(newTrip.concat([p[0][0]])));
+    }
+
+    return nextGen;
 }
 
 function fittest (trips) {
@@ -156,8 +312,8 @@ function fittest (trips) {
     return f;
 }
 
-function info (trips) {
-    let final = [tripFitness(fittest(trips))];
-    final.push(trips.reduce((total,trip)=>(total+tripFitness(trip)),0)/numTrips);
-    return final;
-}
+
+
+
+
+
